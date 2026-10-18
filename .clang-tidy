@@ -12,6 +12,10 @@ modernize-*,
 performance-*,
 portability-*,
 readability-*,
+-readability-identifier-length,
+-cppcoreguidelines-pro-bounds-pointer-arithmetic,
+-cppcoreguidelines-avoid-magic-numbers,
+-performance-avoid-endl,
 '
 
 WarningsAsErrors: '*'
