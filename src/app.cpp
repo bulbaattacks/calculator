@@ -1,7 +1,6 @@
 #include "app.h"
 
-#include "math.h"
-
+#include <ar_math/math.h>
 #include <getopt.h>
 #include <unistd.h>
 
@@ -12,12 +11,41 @@ namespace
 
 struct Task
 {
-    int firstNumber;
-    int secondNumber;
-    char operation;
-    int result;
-    math::Status status;
+    int firstNumber = 0;
+    int secondNumber = 0;
+    char operation = '\0';
+    int result = 0;
+    ar_math::Status status = ar_math::Status::InvalidArgument;
+    bool showHelp = false;
 };
+
+void printHelp(const char* program)
+{
+    std::cout << "Usage: " << program << " -a NUM -o OP [-b NUM]\n"
+              << R"(
+Integer calculator.
+
+Options:
+  -a NUM   first operand (int)
+  -b NUM   second operand (int)
+  -o OP    operation, one of: + - \* / ^ !
+  -h       show this help and exit
+
+Operations:
+  +   addition             a + b
+  -   subtraction          a - b
+  \*   multiplication      a \* b
+  /   integer division     a / b, the fractional part is discarded
+  ^   power                a ^ b, b must be >= 0
+  !   factorial            a!, a must be >= 0
+
+Examples:
+  calculator-app -a 5 -b 10 -o +
+  calculator-app -a 2 -b 10 -o '^'
+  calculator-app -a 5 -o '!'
+  calculator-app -a 6 -b 7 -o '*'
+)";
+}
 
 int parseInt(const char* str)
 {
@@ -52,11 +80,16 @@ void makeTask(int argc, char** argv, Task& task)
 {
     while (true)
     {
-        int opt = getopt(argc, argv, "a:b:o:");
+        int opt = getopt(argc, argv, "a:b:o:h");
 
         if (opt == -1)
         {
             break;
+        }
+
+        if (opt == 'h')
+        {
+            task.showHelp = true;
         }
 
         if (opt == 'a')
@@ -76,54 +109,55 @@ void makeTask(int argc, char** argv, Task& task)
     }
 }
 
-math::Status makeCalculate(Task& task)
+ar_math::Status makeCalculate(Task& task)
 {
     switch (task.operation)
     {
         case '+':
-            task.status = math::addition(task.firstNumber, task.secondNumber,
-                                         task.result);
-            break;
-        case '-':
-            task.status = math::subtraction(task.firstNumber, task.secondNumber,
+            task.status = ar_math::addition(task.firstNumber, task.secondNumber,
                                             task.result);
             break;
-        case '*':
-            task.status = math::multiplication(task.firstNumber,
+        case '-':
+            task.status = ar_math::subtraction(task.firstNumber,
                                                task.secondNumber, task.result);
             break;
+        case '*':
+            task.status = ar_math::multiplication(
+                task.firstNumber, task.secondNumber, task.result);
+            break;
         case '/':
-            task.status = math::division(task.firstNumber, task.secondNumber,
-                                         task.result);
+            task.status = ar_math::division(task.firstNumber, task.secondNumber,
+                                            task.result);
             break;
         case '^':
-            task.status =
-                math::power(task.firstNumber, task.secondNumber, task.result);
+            task.status = ar_math::power(task.firstNumber, task.secondNumber,
+                                         task.result);
             break;
         case '!':
-            task.status = math::factorial(task.firstNumber, task.result);
+            task.status = ar_math::factorial(task.firstNumber, task.result);
             break;
         default:
-            task.status = math::Status::InvalidArgument;
+            task.status = ar_math::Status::InvalidArgument;
     }
     return task.status;
 }
 
 void printResult(Task& task)
 {
-    if (task.status == math::Status::Ok)
+    if (task.status == ar_math::Status::Ok)
     {
         std::cout << "Result: " << task.result << '\n';
     }
 
-    if (task.status == math::Status::Overflow)
+    if (task.status == ar_math::Status::Overflow)
     {
         std::cout << "Error: result is overflow" << '\n';
     }
 
-    if (task.status == math::Status::InvalidArgument)
+    if (task.status == ar_math::Status::InvalidArgument)
     {
-        std::cout << "Error: some argument is invalid" << '\n';
+        std::cout << "Error: some argument is invalid. Use -h for help."
+                  << '\n';
     }
 }
 
@@ -133,6 +167,13 @@ void app::applicationRun(int argc, char** argv)
 {
     Task task{};
     makeTask(argc, argv, task);
+
+    if (task.showHelp)
+    {
+        printHelp(argv[0]);
+        return;
+    }
+
     makeCalculate(task);
     printResult(task);
 }

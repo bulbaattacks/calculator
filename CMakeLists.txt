@@ -8,6 +8,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    ar_math
+    GIT_REPOSITORY "https://github.com/bulbaattacks/ar_math"
+    GIT_TAG        "v1.0.1"
+)
+
+FetchContent_MakeAvailable(ar_math)
+
 if(USE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy-21 clang-tidy)
     if(NOT CLANG_TIDY_EXE)
@@ -19,7 +29,7 @@ endif()
 set(CALCULATOR_SOURCES 
     src/main.cpp
     src/app.cpp
-    src/math.cpp
+    src/app.h
 )
 
 add_executable(calculator-app ${CALCULATOR_SOURCES})
@@ -38,6 +48,8 @@ if(USE_CLANG_FORMAT)
     )
     add_dependencies(calculator-app format)
 endif()
+
+target_link_libraries(calculator-app PRIVATE ar_math)
 
 install(TARGETS calculator-app
     RUNTIME DESTINATION bin
