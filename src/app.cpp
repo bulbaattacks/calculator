@@ -3,8 +3,7 @@
 #include <ar_math/math.h>
 #include <getopt.h>
 #include <unistd.h>
-
-#include <iostream>
+#include <cstdio>
 
 namespace
 {
@@ -21,30 +20,31 @@ struct Task
 
 void printHelp(const char* program)
 {
-    std::cout << "Usage: " << program << " -a NUM -o OP [-b NUM]\n"
-              << R"(
+    printf("Usage: %s -a NUM -o OP [-b NUM]\n", program);
+    fputs(R"(
 Integer calculator.
 
 Options:
   -a NUM   first operand (int)
   -b NUM   second operand (int)
-  -o OP    operation, one of: + - \* / ^ !
+  -o OP    operation, one of: + - * / ^ !
   -h       show this help and exit
 
 Operations:
-  +   addition             a + b
-  -   subtraction          a - b
-  \*   multiplication      a \* b
-  /   integer division     a / b, the fractional part is discarded
-  ^   power                a ^ b, b must be >= 0
-  !   factorial            a!, a must be >= 0
+  +   addition            a + b
+  -   subtraction         a - b
+  *   multiplication      a * b
+  /   integer division    a / b, the fractional part is discarded
+  ^   power               a ^ b, b must be >= 0
+  !   factorial           a!, a must be >= 0
 
 Examples:
   calculator-app -a 5 -b 10 -o +
   calculator-app -a 2 -b 10 -o '^'
   calculator-app -a 5 -o '!'
   calculator-app -a 6 -b 7 -o '*'
-)";
+)",
+          stdout);
 }
 
 int parseInt(const char* str)
@@ -146,18 +146,17 @@ void printResult(Task& task)
 {
     if (task.status == ar_math::Status::Ok)
     {
-        std::cout << "Result: " << task.result << '\n';
+        printf("Result: %d\n", task.result);
     }
 
     if (task.status == ar_math::Status::Overflow)
     {
-        std::cout << "Error: result is overflow" << '\n';
+        fprintf(stderr, "Error: result is overflow\n");
     }
 
     if (task.status == ar_math::Status::InvalidArgument)
     {
-        std::cout << "Error: some argument is invalid. Use -h for help."
-                  << '\n';
+        fprintf(stderr, "Error: some argument is invalid. Use -h for help\n");
     }
 }
 
