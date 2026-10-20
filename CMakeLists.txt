@@ -13,7 +13,7 @@ include(FetchContent)
 FetchContent_Declare(
     ar_math
     GIT_REPOSITORY "https://github.com/bulbaattacks/ar_math"
-    GIT_TAG        "v1.0.1"
+    GIT_TAG        "v1.0.3"
 )
 
 FetchContent_MakeAvailable(ar_math)
