@@ -1,9 +1,11 @@
 #include "app.h"
 
 #include <ar_math/math.h>
-#include <getopt.h>
 #include <unistd.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cerrno>
+#include <climits>
 
 namespace
 {
@@ -47,36 +49,21 @@ Examples:
           stdout);
 }
 
-int parseInt(const char* str)
+bool parseInt(const char* str, int& value)
 {
-    if (str == nullptr || *str == '\0')
+    char* end = nullptr;
+    errno = 0;
+    const long parsed = strtol(str, &end, 10);
+    if (end == str || *end != '\0' || errno == ERANGE ||
+        parsed < INT_MIN || parsed > INT_MAX)
     {
-        return 0;
+        return false;
     }
-
-    int result = 0;
-    int sign = 1;
-    int i = 0;
-
-    if (str[0] == '-')
-    {
-        sign = -1;
-        i = 1;
-    }
-    else if (str[0] == '+')
-    {
-        i = 1;
-    }
-
-    while (str[i] >= '0' && str[i] <= '9')
-    {
-        result = (result * 10) + (str[i] - '0');
-        i++;
-    }
-    return result * sign;
+    value = static_cast<int>(parsed);
+    return true;
 }
 
-void makeTask(int argc, char** argv, Task& task)
+bool makeTask(int argc, char** argv, Task& task)
 {
     while (true)
     {
@@ -86,6 +73,12 @@ void makeTask(int argc, char** argv, Task& task)
         {
             break;
         }
+        
+        if (opt == '?')
+        {
+            fprintf(stderr, "Wrong argument. Use -h for help\n");
+            return false;
+        }
 
         if (opt == 'h')
         {
@@ -94,19 +87,29 @@ void makeTask(int argc, char** argv, Task& task)
 
         if (opt == 'a')
         {
-            task.firstNumber = parseInt(optarg);
+            if(!parseInt(optarg, task.firstNumber))
+            {
+                fprintf(stderr, "Invalid argument: %s\n", optarg);
+                return false;
+            }
         }
 
         if (opt == 'b')
         {
-            task.secondNumber = parseInt(optarg);
+            if(!parseInt(optarg, task.secondNumber))
+            {
+                fprintf(stderr, "Invalid argument: %s\n", optarg);
+                return false;
+            }
         }
 
         if (opt == 'o')
         {
             task.operation = *optarg;
-        }
+        } 
+        
     }
+    return true;
 }
 
 ar_math::Status makeCalculate(Task& task)
@@ -162,17 +165,25 @@ void printResult(Task& task)
 
 } // namespace
 
-void app::applicationRun(int argc, char** argv)
+int app::applicationRun(int argc, char** argv)
 {
     Task task{};
-    makeTask(argc, argv, task);
+    if(!makeTask(argc, argv, task)){
+        return EXIT_FAILURE;
+    }
 
     if (task.showHelp)
     {
         printHelp(argv[0]);
-        return;
+        return EXIT_SUCCESS;
     }
 
     makeCalculate(task);
     printResult(task);
+    if(task.status == ar_math::Status::Ok)
+    {
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
+    
 }
