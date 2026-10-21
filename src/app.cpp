@@ -1,11 +1,14 @@
 #include "app.h"
 
 #include <ar_math/math.h>
+#include <getopt.h>
 #include <unistd.h>
-#include <cstdio>
-#include <cstdlib>
+
 #include <cerrno>
 #include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 namespace
 {
@@ -18,6 +21,8 @@ struct Task
     int result = 0;
     ar_math::Status status = ar_math::Status::InvalidArgument;
     bool showHelp = false;
+    bool getFirstArgument = false;
+    bool getSecondArgument = false;
 };
 
 void printHelp(const char* program)
@@ -54,8 +59,8 @@ bool parseInt(const char* str, int& value)
     char* end = nullptr;
     errno = 0;
     const long parsed = strtol(str, &end, 10);
-    if (end == str || *end != '\0' || errno == ERANGE ||
-        parsed < INT_MIN || parsed > INT_MAX)
+    if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
+        parsed > INT_MAX)
     {
         return false;
     }
@@ -69,45 +74,71 @@ bool makeTask(int argc, char** argv, Task& task)
     {
         int opt = getopt(argc, argv, "a:b:o:h");
 
+        if (opt == 'h')
+        {
+            task.showHelp = true;
+            return true;
+        }
+
         if (opt == -1)
         {
             break;
         }
-        
+
         if (opt == '?')
         {
             fprintf(stderr, "Wrong argument. Use -h for help\n");
             return false;
         }
 
-        if (opt == 'h')
-        {
-            task.showHelp = true;
-        }
-
         if (opt == 'a')
         {
-            if(!parseInt(optarg, task.firstNumber))
+            if (!parseInt(optarg, task.firstNumber))
             {
-                fprintf(stderr, "Invalid argument: %s\n", optarg);
+                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
+                        optarg);
                 return false;
             }
+            task.getFirstArgument = true;
         }
 
         if (opt == 'b')
         {
-            if(!parseInt(optarg, task.secondNumber))
+            if (!parseInt(optarg, task.secondNumber))
             {
-                fprintf(stderr, "Invalid argument: %s\n", optarg);
+                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
+                        optarg);
                 return false;
             }
+            task.getSecondArgument = true;
         }
 
         if (opt == 'o')
         {
+            if (strlen(optarg) != 1)
+            {
+                fprintf(stderr, "Invalid operation: %s. Use -h for help\n",
+                        optarg);
+                return false;
+            }
             task.operation = *optarg;
-        } 
-        
+        }
+    }
+    if (task.operation != '!')
+    {
+        if (!task.getFirstArgument || !task.getSecondArgument)
+        {
+            fprintf(stderr, "Missing argument. Use -h for help\n");
+            return false;
+        }
+    }
+    else
+    {
+        if (!task.getFirstArgument)
+        {
+            fprintf(stderr, "Missing argument. Use -h for help\n");
+            return false;
+        }
     }
     return true;
 }
@@ -168,7 +199,8 @@ void printResult(Task& task)
 int app::applicationRun(int argc, char** argv)
 {
     Task task{};
-    if(!makeTask(argc, argv, task)){
+    if (!makeTask(argc, argv, task))
+    {
         return EXIT_FAILURE;
     }
 
@@ -180,10 +212,9 @@ int app::applicationRun(int argc, char** argv)
 
     makeCalculate(task);
     printResult(task);
-    if(task.status == ar_math::Status::Ok)
+    if (task.status == ar_math::Status::Ok)
     {
         return EXIT_SUCCESS;
     }
     return EXIT_FAILURE;
-    
 }
