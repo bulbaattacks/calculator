@@ -16,6 +16,11 @@ readability-*,
 -cppcoreguidelines-pro-bounds-pointer-arithmetic,
 -cppcoreguidelines-avoid-magic-numbers,
 -performance-avoid-endl,
+-concurrency-mt-unsafe,
+-cppcoreguidelines-pro-type-vararg,
+-readability-function-cognitive-complexity,
+-misc-const-correctness,
+-google-runtime-int,
 '
 
 WarningsAsErrors: '*'

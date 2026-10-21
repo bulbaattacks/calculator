@@ -1,6 +1,6 @@
 #pragma once
 
-namespace app 
+namespace app
 {
 int applicationRun(int argc, char** argv);
 }

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(calculator LANGUAGES CXX)
 
-option(USE_CLANG_FORMAT "Format sources with clang-format before each build" OFF)
-option(USE_CLANG_TIDY "Check sources with clang-tidy during compilation" OFF)
+option(USE_CLANG_FORMAT "Format sources with clang-format before each build" ON)
+option(USE_CLANG_TIDY "Check sources with clang-tidy during compilation" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
     ar_math
     GIT_REPOSITORY "https://github.com/bulbaattacks/ar_math"
-    GIT_TAG        "v1.0.3"
+    GIT_TAG        "v1.0.5"
 )
 
 FetchContent_MakeAvailable(ar_math)

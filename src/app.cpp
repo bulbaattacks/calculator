@@ -19,7 +19,7 @@ struct Task
     int secondNumber = 0;
     char operation = '\0';
     int result = 0;
-    ar_math::Status status = ar_math::Status::InvalidArgument;
+    ar_math::Status status = ar_math::Status::InitialStatus;
     bool showHelp = false;
     bool getFirstArgument = false;
     bool getSecondArgument = false;
@@ -171,7 +171,7 @@ ar_math::Status makeCalculate(Task& task)
             task.status = ar_math::factorial(task.firstNumber, task.result);
             break;
         default:
-            task.status = ar_math::Status::InvalidArgument;
+            task.status = ar_math::Status::UnknownOperation;
     }
     return task.status;
 }
@@ -185,12 +185,22 @@ void printResult(Task& task)
 
     if (task.status == ar_math::Status::Overflow)
     {
-        fprintf(stderr, "Error: result is overflow\n");
+        fprintf(stderr, "Error: result is overflow.\n");
     }
 
-    if (task.status == ar_math::Status::InvalidArgument)
+    if (task.status == ar_math::Status::DivisionByZero)
     {
-        fprintf(stderr, "Error: some argument is invalid. Use -h for help\n");
+        fprintf(stderr, "Error: Division by zero is forbidden.\n");
+    }
+
+    if (task.status == ar_math::Status::NegativeArgument)
+    {
+        fprintf(stderr, "Error: Negative argument is forbidden.\n");
+    }
+
+    if (task.status == ar_math::Status::UnknownOperation)
+    {
+        fprintf(stderr, "Error: Unknown operation. Use -h for help\n");
     }
 }
 
