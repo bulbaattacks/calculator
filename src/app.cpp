@@ -10,35 +10,22 @@
 #include <cstdlib>
 #include <cstring>
 
-struct calculator::Task
-{
-    int firstNumber = 0;
-    int secondNumber = 0;
-    char operation = '\0';
-    int result = 0;
-    ar_math::Status status = ar_math::Status::InitialStatus;
-    bool showHelp = false;
-    bool getFirstArgument = false;
-    bool getSecondArgument = false;
-};
-
 int calculator::Application::applicationRun(int argc, char** argv)
 {
-    Task task{};
-    if (!makeTask(argc, argv, task))
+    if (!makeTask(argc, argv, task_))
     {
         return EXIT_FAILURE;
     }
 
-    if (task.showHelp)
+    if (task_.showHelp)
     {
         printHelp(argv[0]);
         return EXIT_SUCCESS;
     }
 
-    makeCalculate(task);
-    printResult(task);
-    if (task.status == ar_math::Status::Ok)
+    makeCalculate(task_);
+    printResult(task_);
+    if (task_.status == ar_math::Status::Ok)
     {
         return EXIT_SUCCESS;
     }
