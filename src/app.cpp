@@ -1,19 +1,16 @@
 #include "app.h"
 
-#include <ar_math/math.h>
 #include <getopt.h>
 #include <unistd.h>
 
 #include <cerrno>
 #include <climits>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-namespace
-{
-
-struct Task
+struct calculator::Task
 {
     int firstNumber = 0;
     int secondNumber = 0;
@@ -25,7 +22,30 @@ struct Task
     bool getSecondArgument = false;
 };
 
-void printHelp(const char* program)
+int calculator::Application::applicationRun(int argc, char** argv)
+{
+    Task task{};
+    if (!makeTask(argc, argv, task))
+    {
+        return EXIT_FAILURE;
+    }
+
+    if (task.showHelp)
+    {
+        printHelp(argv[0]);
+        return EXIT_SUCCESS;
+    }
+
+    makeCalculate(task);
+    printResult(task);
+    if (task.status == ar_math::Status::Ok)
+    {
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
+}
+
+void calculator::Application::printHelp(const char* program)
 {
     printf("Usage: %s -a NUM -o OP [-b NUM]\n", program);
     fputs(R"(
@@ -54,11 +74,11 @@ Examples:
           stdout);
 }
 
-bool parseInt(const char* str, int& value)
+bool calculator::Application::parseInt(const char* str, int& value)
 {
     char* end = nullptr;
     errno = 0;
-    const long parsed = strtol(str, &end, 10);
+    const int64_t parsed = strtol(str, &end, 10);
     if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
         parsed > INT_MAX)
     {
@@ -68,7 +88,7 @@ bool parseInt(const char* str, int& value)
     return true;
 }
 
-bool makeTask(int argc, char** argv, Task& task)
+bool calculator::Application::makeTask(int argc, char** argv, Task& task)
 {
     while (true)
     {
@@ -143,7 +163,7 @@ bool makeTask(int argc, char** argv, Task& task)
     return true;
 }
 
-ar_math::Status makeCalculate(Task& task)
+ar_math::Status calculator::Application::makeCalculate(Task& task)
 {
     switch (task.operation)
     {
@@ -176,7 +196,7 @@ ar_math::Status makeCalculate(Task& task)
     return task.status;
 }
 
-void printResult(Task& task)
+void calculator::Application::printResult(Task& task)
 {
     if (task.status == ar_math::Status::Ok)
     {
@@ -202,29 +222,4 @@ void printResult(Task& task)
     {
         fprintf(stderr, "Error: Unknown operation. Use -h for help\n");
     }
-}
-
-} // namespace
-
-int app::applicationRun(int argc, char** argv)
-{
-    Task task{};
-    if (!makeTask(argc, argv, task))
-    {
-        return EXIT_FAILURE;
-    }
-
-    if (task.showHelp)
-    {
-        printHelp(argv[0]);
-        return EXIT_SUCCESS;
-    }
-
-    makeCalculate(task);
-    printResult(task);
-    if (task.status == ar_math::Status::Ok)
-    {
-        return EXIT_SUCCESS;
-    }
-    return EXIT_FAILURE;
 }
