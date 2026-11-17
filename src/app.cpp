@@ -44,10 +44,6 @@ int calculator::Application::run(int argc, char** argv)
 
     printResult(task_);
     return EXIT_SUCCESS;
-    // {
-    //     return EXIT_SUCCESS;
-    // }
-    // return EXIT_FAILURE;
 }
 
 void calculator::Application::printHelp(const char* program)
@@ -87,7 +83,8 @@ void calculator::Application::parseInt(const char* str, int& value)
     if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
         parsed > INT_MAX)
     {
-        throw std::invalid_argument("No valid argument to parse");
+        throw std::invalid_argument("No valid argument to parse: " +
+                                    std::string(str));
     }
     value = static_cast<int>(parsed);
 }
@@ -160,67 +157,47 @@ ar_math::Status calculator::Application::makeCalculate(Task& task)
         case '+':
             task.status = ar_math::addition(task.firstNumber, task.secondNumber,
                                             task.result);
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
             break;
         case '-':
             task.status = ar_math::subtraction(task.firstNumber,
                                                task.secondNumber, task.result);
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
             break;
         case '*':
             task.status = ar_math::multiplication(
                 task.firstNumber, task.secondNumber, task.result);
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
             break;
         case '/':
             task.status = ar_math::division(task.firstNumber, task.secondNumber,
                                             task.result);
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
-            if (task.status == ar_math::Status::DivisionByZero)
-            {
-                throw std::domain_error("Division by zero is forbidden.");
-            }
             break;
         case '^':
             task.status = ar_math::power(task.firstNumber, task.secondNumber,
                                          task.result);
-            if (task.status == ar_math::Status::NegativeArgument)
-            {
-                throw std::domain_error("Negative argument is forbidden.");
-            }
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
             break;
         case '!':
             task.status = ar_math::factorial(task.firstNumber, task.result);
-            if (task.status == ar_math::Status::NegativeArgument)
-            {
-                throw std::domain_error("Negative argument is forbidden.");
-            }
-            if (task.status == ar_math::Status::Overflow)
-            {
-                throw std::overflow_error("Result is overflow.");
-            }
             break;
         default:
             task.status = ar_math::Status::UnknownOperation;
-            throw std::logic_error("Unknown operation.");
     }
-    return task.status;
+
+    switch (task.status)
+    {
+        case ar_math::Status::Ok:
+            return task.status;
+        case ar_math::Status::NegativeArgument:
+            throw std::domain_error("Negative argument is forbidden.");
+        case ar_math::Status::Overflow:
+            throw std::overflow_error("Result is overflow.");
+        case ar_math::Status::DivisionByZero:
+            throw std::domain_error("Division by zero is forbidden.");
+        case ar_math::Status::UnknownOperation:
+            throw std::logic_error("Unknown operation.");
+        case ar_math::Status::InitialStatus:
+            throw std::logic_error("Cant figure out status.");
+        default:
+            throw std::logic_error("Unknown status.");
+    }
 }
 
 void calculator::Application::printResult(Task& task)
