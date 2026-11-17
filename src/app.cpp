@@ -9,8 +9,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
+#include <string>
 
-int calculator::Application::applicationRun(int argc, char** argv)
+int calculator::Application::run(int argc, char** argv)
 {
     if (!makeTask(argc, argv, task_))
     {
@@ -61,7 +63,7 @@ Examples:
           stdout);
 }
 
-bool calculator::Application::parseInt(const char* str, int& value)
+void calculator::Application::parseInt(const char* str, int& value)
 {
     char* end = nullptr;
     errno = 0;
@@ -69,13 +71,12 @@ bool calculator::Application::parseInt(const char* str, int& value)
     if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
         parsed > INT_MAX)
     {
-        return false;
+        throw std::invalid_argument("No argument to parse");
     }
     value = static_cast<int>(parsed);
-    return true;
 }
 
-bool calculator::Application::makeTask(int argc, char** argv, Task& task)
+void calculator::Application::makeTask(int argc, char** argv, Task& task)
 {
     while (true)
     {
@@ -84,7 +85,7 @@ bool calculator::Application::makeTask(int argc, char** argv, Task& task)
         if (opt == 'h')
         {
             task.showHelp = true;
-            return true;
+            return;
         }
 
         if (opt == -1)
@@ -94,29 +95,18 @@ bool calculator::Application::makeTask(int argc, char** argv, Task& task)
 
         if (opt == '?')
         {
-            fprintf(stderr, "Wrong argument. Use -h for help\n");
-            return false;
+            throw std::invalid_argument("Unknown argument. Use -h for help.");
         }
 
         if (opt == 'a')
         {
-            if (!parseInt(optarg, task.firstNumber))
-            {
-                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
-                        optarg);
-                return false;
-            }
+            parseInt(optarg, task.firstNumber);
             task.getFirstArgument = true;
         }
 
         if (opt == 'b')
         {
-            if (!parseInt(optarg, task.secondNumber))
-            {
-                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
-                        optarg);
-                return false;
-            }
+            parseInt(optarg, task.secondNumber);
             task.getSecondArgument = true;
         }
 
@@ -124,9 +114,7 @@ bool calculator::Application::makeTask(int argc, char** argv, Task& task)
         {
             if (strlen(optarg) != 1)
             {
-                fprintf(stderr, "Invalid operation: %s. Use -h for help\n",
-                        optarg);
-                return false;
+                throw std::invalid_argument("Unknown operation: " + std::string(optarg) + ". " + "Use -h for help.");
             }
             task.operation = *optarg;
         }
@@ -135,19 +123,16 @@ bool calculator::Application::makeTask(int argc, char** argv, Task& task)
     {
         if (!task.getFirstArgument || !task.getSecondArgument)
         {
-            fprintf(stderr, "Missing argument. Use -h for help\n");
-            return false;
+            throw std::logic_error("Missing argument. Use -h for help.");
         }
     }
     else
     {
         if (!task.getFirstArgument)
         {
-            fprintf(stderr, "Missing argument. Use -h for help\n");
-            return false;
+            throw std::logic_error("Enter first argument. Use -h for help.");
         }
     }
-    return true;
 }
 
 ar_math::Status calculator::Application::makeCalculate(Task& task)
