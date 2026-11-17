@@ -18,6 +18,15 @@ int calculator::Application::run(int argc, char** argv)
 {
     try
     {
+        readline(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error while reading json. " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
+    try
+    {
         makeTask(argc, argv, task_);
     }
     catch (const std::exception& e)
@@ -44,6 +53,16 @@ int calculator::Application::run(int argc, char** argv)
 
     printResult(task_);
     return EXIT_SUCCESS;
+}
+
+std::string calculator::Application::readline(int argc, char** argv)
+{
+    if (argc < 2)
+    {
+        throw std::invalid_argument("Nothing to parse.");
+    }
+    std::string json = argv[1];
+    return json;
 }
 
 void calculator::Application::printHelp(const char* program)

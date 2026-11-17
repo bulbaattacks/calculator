@@ -2,6 +2,8 @@
 
 #include <ar_math/math.h>
 
+#include <string>
+
 namespace calculator
 {
 
@@ -23,6 +25,7 @@ class Application
     int run(int argc, char** argv);
 
   private:
+    std::string readline(int argc, char** argv);
     void printHelp(const char* program);
     void parseInt(const char* str, int& value);
     void makeTask(int argc, char** argv, Task& task);
