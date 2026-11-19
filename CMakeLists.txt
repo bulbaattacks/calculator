@@ -17,7 +17,12 @@ FetchContent_Declare(
     GIT_TAG        "v1.0.5"
 )
 
-FetchContent_MakeAvailable(ar_math)
+FetchContent_Declare(
+    json 
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+)
+
+FetchContent_MakeAvailable(ar_math json)
 
 if(USE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy-21 clang-tidy)
@@ -50,7 +55,7 @@ if(USE_CLANG_FORMAT)
     add_dependencies(calculator-app format)
 endif()
 
-target_link_libraries(calculator-app PRIVATE ar_math)
+target_link_libraries(calculator-app PRIVATE ar_math nlohmann_json::nlohmann_json)
 
 install(TARGETS calculator-app
     RUNTIME DESTINATION bin

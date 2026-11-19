@@ -1,7 +1,11 @@
 #include "app.h"
 
+#include "nlohmann/json_fwd.hpp"
+
 #include <getopt.h>
 #include <unistd.h>
+
+#include <nlohmann/json.hpp>
 
 #include <cerrno>
 #include <climits>
@@ -16,29 +20,21 @@
 
 int calculator::Application::run(int argc, char** argv)
 {
-    try
-    {
-        readline(argc, argv);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Error while reading json. " << e.what() << "\n";
-        return EXIT_FAILURE;
-    }
-    try
-    {
-        makeTask(argc, argv, task_);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Can not make task. " << e.what() << "\n";
-        return EXIT_FAILURE;
-    }
-
-    if (task_.showHelp)
+    if (argc < 2 || std::strcmp(argv[1], "--help") == 0)
     {
         printHelp(argv[0]);
         return EXIT_SUCCESS;
+    }
+
+    try
+    {
+        nlohmann::json json = parseline(argc, argv);
+        makeTask(json, task_);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error while building task. " << e.what() << "\n";
+        return EXIT_FAILURE;
     }
 
     try
@@ -55,27 +51,27 @@ int calculator::Application::run(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-std::string calculator::Application::readline(int argc, char** argv)
+nlohmann::json calculator::Application::parseline(int argc, char** argv)
 {
     if (argc < 2)
     {
         throw std::invalid_argument("Nothing to parse.");
     }
-    std::string json = argv[1];
+    nlohmann::json json = nlohmann::json::parse(argv[1]);
     return json;
 }
 
 void calculator::Application::printHelp(const char* program)
 {
-    printf("Usage: %s -a NUM -o OP [-b NUM]\n", program);
+    printf("Usage: %s '{\"a\" : NUM, \"b\": NUM, \"o\": OP}'", program);
     fputs(R"(
 Integer calculator.
 
 Options:
-  -a NUM   first operand (int)
-  -b NUM   second operand (int)
-  -o OP    operation, one of: + - * / ^ !
-  -h       show this help and exit
+  a NUM   first operand (int)
+  b NUM   second operand (int)
+  o OP    operation, one of: + - * / ^ !
+  --help       show this help and exit
 
 Operations:
   +   addition            a + b
@@ -86,86 +82,65 @@ Operations:
   !   factorial           a!, a must be >= 0
 
 Examples:
-  calculator-app -a 5 -b 10 -o +
-  calculator-app -a 2 -b 10 -o '^'
-  calculator-app -a 5 -o '!'
-  calculator-app -a 6 -b 7 -o '*'
+  calculator-app '{"a":22, "b":2, "o":"+"}'
+  calculator-app '{"a":2, "b":1, "o":"^"}'
+  calculator-app '{"a":5, "o":"!"}'
+  calculator-app '{"a":6, "b":7, "o":"*"}' 
 )",
           stdout);
 }
 
-void calculator::Application::parseInt(const char* str, int& value)
+int calculator::Application::parseInt(const nlohmann::json& argument)
 {
-    char* end = nullptr;
-    errno = 0;
-    const int64_t parsed = strtol(str, &end, 10);
-    if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
-        parsed > INT_MAX)
+    if (!argument.is_number_integer())
     {
-        throw std::invalid_argument("No valid argument to parse: " +
-                                    std::string(str));
+        throw std::invalid_argument("Argument must be integer: " +
+                                    nlohmann::to_string(argument));
     }
-    value = static_cast<int>(parsed);
+
+    if (argument.is_number_unsigned())
+    {
+        if (argument.get<std::uint64_t>() > INT_MAX)
+        {
+            throw std::invalid_argument(
+                "Argument is not valid: excess max int: " +
+                nlohmann::to_string(argument));
+        }
+    }
+    std::int64_t intArgument = argument.get<std::int64_t>();
+    if (intArgument > INT_MAX)
+    {
+        throw std::invalid_argument("Argument is not valid: excess max int: " +
+                                    nlohmann::to_string(argument));
+    }
+    if (intArgument < INT_MIN)
+    {
+        throw std::invalid_argument(
+            "Argument is not valid: below the min int: " +
+            nlohmann::to_string(argument));
+    }
+    return static_cast<int>(intArgument);
 }
 
-void calculator::Application::makeTask(int argc, char** argv, Task& task)
+void calculator::Application::makeTask(const nlohmann::json& json, Task& task)
 {
-    while (true)
+
+    std::string operationArgumentStr = json.at("o").get<std::string>();
+    if (operationArgumentStr.length() != 1)
     {
-        int opt = getopt(argc, argv, "a:b:o:h");
-
-        if (opt == 'h')
-        {
-            task.showHelp = true;
-            return;
-        }
-
-        if (opt == -1)
-        {
-            break;
-        }
-
-        if (opt == '?')
-        {
-            throw std::invalid_argument("Unknown argument. Use -h for help.");
-        }
-
-        if (opt == 'a')
-        {
-            parseInt(optarg, task.firstNumber);
-            task.getFirstArgument = true;
-        }
-
-        if (opt == 'b')
-        {
-            parseInt(optarg, task.secondNumber);
-            task.getSecondArgument = true;
-        }
-
-        if (opt == 'o')
-        {
-            if (strlen(optarg) != 1)
-            {
-                throw std::invalid_argument(
-                    "Unknown operation: " + std::string(optarg) + ". " +
-                    "Use -h for help.");
-            }
-            task.operation = *optarg;
-        }
+        throw std::invalid_argument(
+            "Unknown operation: " + operationArgumentStr + ". " +
+            "Use --help for help.");
     }
+    task.operation = operationArgumentStr[0];
+
+    nlohmann::json firstArgument = json.at("a");
+    task.firstNumber = parseInt(firstArgument);
+
     if (task.operation != '!')
     {
-        if (!task.getFirstArgument || !task.getSecondArgument)
-        {
-            throw std::logic_error("Missing argument. Use -h for help.");
-        }
-    }
-    else
-    {
-        if (!task.getFirstArgument)
-        {
-            throw std::logic_error("Enter first argument. Use -h for help.");
-        }
+        nlohmann::json secondArgument = json.at("b");
+        task.secondNumber = parseInt(secondArgument);
     }
 }
 

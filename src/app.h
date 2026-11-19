@@ -2,7 +2,7 @@
 
 #include <ar_math/math.h>
 
-#include <string>
+#include <nlohmann/json.hpp>
 
 namespace calculator
 {
@@ -25,10 +25,10 @@ class Application
     int run(int argc, char** argv);
 
   private:
-    std::string readline(int argc, char** argv);
+    nlohmann::json parseline(int argc, char** argv);
     void printHelp(const char* program);
-    void parseInt(const char* str, int& value);
-    void makeTask(int argc, char** argv, Task& task);
+    int parseInt(const nlohmann::json& argument);
+    void makeTask(const nlohmann::json& json, Task& task);
     ar_math::Status makeCalculate(Task& task);
     void printResult(Task& task);
 
