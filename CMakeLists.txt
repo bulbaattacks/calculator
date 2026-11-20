@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 project(calculator LANGUAGES CXX)
 
 option(USE_CLANG_FORMAT "Format sources with clang-format before each build" ON)
@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
+
 FetchContent_Declare(
     ar_math
     GIT_REPOSITORY "https://github.com/bulbaattacks/ar_math"
@@ -22,7 +23,14 @@ FetchContent_Declare(
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
 )
 
-FetchContent_MakeAvailable(ar_math json)
+FetchContent_Declare(
+    spdlog 
+    GIT_REPOSITORY  "https://github.com/gabime/spdlog/"
+    GIT_TAG         "v1.12.0"
+    FIND_PACKAGE_ARGS 1.12.0 
+)
+
+FetchContent_MakeAvailable(ar_math json spdlog)
 
 if(USE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy-21 clang-tidy)
@@ -55,7 +63,7 @@ if(USE_CLANG_FORMAT)
     add_dependencies(calculator-app format)
 endif()
 
-target_link_libraries(calculator-app PRIVATE ar_math nlohmann_json::nlohmann_json)
+target_link_libraries(calculator-app PRIVATE ar_math nlohmann_json::nlohmann_json spdlog::spdlog_header_only)
 
 install(TARGETS calculator-app
     RUNTIME DESTINATION bin
