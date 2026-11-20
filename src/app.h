@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ar_math/math.h>
+#include "nlohmann/json_fwd.hpp"
 
-#include <nlohmann/json.hpp>
+#include <ar_math/math.h>
 
 namespace calculator
 {

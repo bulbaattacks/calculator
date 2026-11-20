@@ -1,7 +1,5 @@
 #include "app.h"
 
-#include "nlohmann/json_fwd.hpp"
-
 #include <getopt.h>
 #include <unistd.h>
 
