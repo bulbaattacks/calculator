@@ -37,3 +37,4 @@ void calculator::Logger::error(const std::string& message)
 {
     fileLogger->error(message);
 }
+void calculator::Logger::info(const std::string& message)    { fileLogger->info(message); }

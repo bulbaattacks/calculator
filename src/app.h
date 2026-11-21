@@ -14,9 +14,6 @@ struct Task
     char operation = '\0';
     int result = 0;
     ar_math::Status status = ar_math::Status::InitialStatus;
-    bool showHelp = false;
-    bool getFirstArgument = false;
-    bool getSecondArgument = false;
 };
 
 class Application
@@ -28,9 +25,9 @@ class Application
     nlohmann::json parseline(int argc, char** argv);
     void printHelp(const char* program);
     int parseInt(const nlohmann::json& argument);
-    void makeTask(const nlohmann::json& json, Task& task);
-    ar_math::Status makeCalculate(Task& task);
-    void printResult(Task& task);
+    void makeTask(const nlohmann::json& json);
+    void makeCalculate();
+    void printResult() const;
 
   private:
     Task task_;
