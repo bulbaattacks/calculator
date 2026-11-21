@@ -44,6 +44,8 @@ set(CALCULATOR_SOURCES
     src/main.cpp
     src/app.cpp
     src/app.h
+    src/log.h
+    src/log.cpp
 )
 
 add_executable(calculator-app ${CALCULATOR_SOURCES})

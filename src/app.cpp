@@ -35,7 +35,7 @@ int calculator::Application::run(int argc, char** argv)
     {
         logger.info("Json input: " + std::string(argv[1]));
         nlohmann::json json = parseline(argc, argv);
-        makeTask(json, task_);
+        makeTask(json);
     }
     catch (const std::exception& e)
     {
