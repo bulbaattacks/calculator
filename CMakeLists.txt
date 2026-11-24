@@ -3,6 +3,7 @@ project(calculator LANGUAGES CXX)
 
 option(USE_CLANG_FORMAT "Format sources with clang-format before each build" ON)
 option(USE_CLANG_TIDY "Check sources with clang-tidy during compilation" ON)
+option(CALCULATOR_BUILD_TESTS "Build unit tests with GoogleTest" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,6 +22,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     json 
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 FetchContent_Declare(
@@ -32,6 +34,18 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(ar_math json spdlog)
 
+if(CALCULATOR_BUILD_TESTS)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    set(INSTALL_GTEST OFF)
+    FetchContent_MakeAvailable(googletest)
+
+    enable_testing()
+endif()
+
 if(USE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy-21 clang-tidy)
     if(NOT CLANG_TIDY_EXE)
@@ -40,15 +54,29 @@ if(USE_CLANG_TIDY)
     set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_EXE})
 endif()
 
+
 set(CALCULATOR_SOURCES 
     src/main.cpp
+)
+
+set(CALCULATOR_LOGIC
     src/app.cpp
     src/app.h
     src/log.h
     src/log.cpp
 )
 
-add_executable(calculator-app ${CALCULATOR_SOURCES})
+add_library(calculator-logic ${CALCULATOR_LOGIC})    
+      
+target_include_directories(calculator-logic PUBLIC src)
+
+target_link_libraries(calculator-logic
+    PUBLIC  ar_math nlohmann_json::nlohmann_json
+    PRIVATE spdlog::spdlog_header_only
+)
+
+add_executable(calculator-app ${CALCULATOR_SOURCES})     
+target_link_libraries(calculator-app PRIVATE calculator-logic)        
 
 if(USE_CLANG_FORMAT)
     find_program(CLANG_FORMAT_EXE NAMES clang-format-21 clang-format)
@@ -57,15 +85,13 @@ if(USE_CLANG_FORMAT)
     endif()
 
     add_custom_target(format
-        COMMAND ${CLANG_FORMAT_EXE} -i ${CALCULATOR_SOURCES}
+        COMMAND ${CLANG_FORMAT_EXE} -i ${CALCULATOR_SOURCES} ${CALCULATOR_LOGIC}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Formatting sources with clang-format"
         VERBATIM
     )
-    add_dependencies(calculator-app format)
+    add_dependencies(calculator-logic format)
 endif()
-
-target_link_libraries(calculator-app PRIVATE ar_math nlohmann_json::nlohmann_json spdlog::spdlog_header_only)
 
 install(TARGETS calculator-app
     RUNTIME DESTINATION bin
