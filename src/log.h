@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace calculator
@@ -20,5 +21,8 @@ class Logger
 
   private:
     Logger();
+    ~Logger();
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 } // namespace calculator
