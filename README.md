@@ -16,32 +16,32 @@
 ## Использование
 
 ```
-calculator-app -a NUM -o OP [-b NUM]
-calculator-app -h
+calculator-app '{"a" : NUM, "b": NUM, "o": OP}'
+calculator-app --help
 ```
 
 | Ключ | Значение |
 |---|---|
-| `-a NUM` | первое число (`int`) |
-| `-b NUM` | второе число (`int`), для факториала не нужно |
-| `-o OP` | операция: `+ - * / ^ !` |
-| `-h` | показать справку и выйти |
+| `"a" : NUM` | первое число (`int`) |
+| `"b": NUM` | второе число (`int`), для факториала не нужно |
+| `"o": OP` | операция: `+ - * / ^ !` |
+| `--help` | показать справку и выйти |
 
 
 ### Примеры
 
 ```console
-$ ./build/calculator-app -a 5 -b 10 -o +
-Result: 15
-$ ./build/calculator-app -a 7 -b 2 -o /
-Result: 3
-$ ./build/calculator-app -a 2 -b 10 -o '^'
-Result: 1024
-$ ./build/calculator-app -a 5 -o '!'
-Result: 120
-$ ./build/calculator-app -a 2147483647 -b 1 -o +
+$ ./build/calculator-app '{"o":"+","a":2,"b":3}'
+Result: 5
+$ ./build/calculator-app '{"o":"/","a":4,"b":2}'
+Result: 2
+$ ./build/calculator-app '{"o":"^","a":2,"b":2}'
+Result: 4
+$ ./build/calculator-app '{"o":"!","a":2}'
+Result: 2
+$ ./build/calculator-app '{"o":"+","a":2147483647,"b":1}'
 Error: result is overflow
-$ ./build/calculator-app -a 1 -b 0 -o /
+$ ./build/calculator-app {"o":"/","a":2147483647,"b":0}'
 Error: some argument is invalid. Use -h for help.
 ```
 
