@@ -1,41 +1,96 @@
 #include "app.h"
 
-#include <ar_math/math.h>
-#include <getopt.h>
-#include <unistd.h>
+#include "log.h"
 
-#include <cerrno>
+#include <nlohmann/json.hpp>
+
 #include <climits>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
-namespace
+int calculator::Application::run(int argc, char** argv)
 {
+    calculator::Logger& logger = calculator::Logger::instance();
 
-struct Task
-{
-    int firstNumber = 0;
-    int secondNumber = 0;
-    char operation = '\0';
-    int result = 0;
-    ar_math::Status status = ar_math::Status::InitialStatus;
-    bool showHelp = false;
-    bool getFirstArgument = false;
-    bool getSecondArgument = false;
-};
+    if (argc < 2)
+    {
+        logger.warning("No json to parse. Help info is shown for a user.");
+        printHelp(argv[0]);
+        return EXIT_FAILURE;
+    }
+    if (std::strcmp(argv[1], "--help") == 0)
+    {
+        logger.info("User asks for help info.");
+        printHelp(argv[0]);
+        return EXIT_SUCCESS;
+    }
 
-void printHelp(const char* program)
+    try
+    {
+        logger.info("Json input: " + std::string(argv[1]));
+        nlohmann::json json = parseline(argc, argv);
+        makeTask(json);
+    }
+    catch (const std::exception& e)
+    {
+        logger.error("Error while building task: " + std::string(e.what()));
+        std::cerr << "Error while building task. " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
+
+    try
+    {
+        logger.info("Start making calculation ...");
+        logger.debug("First argument: " + std::to_string(task_.firstNumber));
+        if (task_.operation != '!')
+        {
+            logger.debug("Second argument: " +
+                         std::to_string(task_.secondNumber));
+        }
+        logger.debug("Operation argument: " + std::string(1, task_.operation));
+
+        makeCalculate();
+    }
+    catch (const std::exception& e)
+    {
+        logger.error("Error while calculating: " + std::string(e.what()));
+        std::cerr << "Error while calculating. " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
+
+    logger.info("Calculation is ready. Result: " +
+                std::to_string(task_.result));
+    printResult();
+    return EXIT_SUCCESS;
+}
+
+nlohmann::json calculator::Application::parseline(int argc, char** argv)
 {
-    printf("Usage: %s -a NUM -o OP [-b NUM]\n", program);
+    if (argc < 2)
+    {
+        throw std::invalid_argument("Nothing to parse.");
+    }
+    nlohmann::json json = nlohmann::json::parse(argv[1]);
+    return json;
+}
+
+void calculator::Application::printHelp(const char* program)
+{
+    printf("Usage: %s '{\"a\" : NUM, \"b\": NUM, \"o\": OP}'", program);
     fputs(R"(
 Integer calculator.
 
 Options:
-  -a NUM   first operand (int)
-  -b NUM   second operand (int)
-  -o OP    operation, one of: + - * / ^ !
-  -h       show this help and exit
+  a NUM   first operand (int)
+  b NUM   second operand (int)
+  o OP    operation, one of: + - * / ^ !
+  --help       show this help and exit
 
 Operations:
   +   addition            a + b
@@ -46,185 +101,122 @@ Operations:
   !   factorial           a!, a must be >= 0
 
 Examples:
-  calculator-app -a 5 -b 10 -o +
-  calculator-app -a 2 -b 10 -o '^'
-  calculator-app -a 5 -o '!'
-  calculator-app -a 6 -b 7 -o '*'
+  calculator-app '{"a":22, "b":2, "o":"+"}'
+  calculator-app '{"a":2, "b":1, "o":"^"}'
+  calculator-app '{"a":5, "o":"!"}'
+  calculator-app '{"a":6, "b":7, "o":"*"}' 
 )",
           stdout);
 }
 
-bool parseInt(const char* str, int& value)
+int calculator::Application::parseInt(const nlohmann::json& argument)
 {
-    char* end = nullptr;
-    errno = 0;
-    const long parsed = strtol(str, &end, 10);
-    if (end == str || *end != '\0' || errno == ERANGE || parsed < INT_MIN ||
-        parsed > INT_MAX)
+    if (!argument.is_number_integer())
     {
-        return false;
+        throw std::invalid_argument("Argument must be integer: " +
+                                    nlohmann::to_string(argument));
     }
-    value = static_cast<int>(parsed);
-    return true;
+
+    if (argument.is_number_unsigned())
+    {
+        if (argument.get<std::uint64_t>() > INT_MAX)
+        {
+            throw std::invalid_argument(
+                "Argument is not valid: excess max int: " +
+                nlohmann::to_string(argument));
+        }
+    }
+    std::int64_t intArgument = argument.get<std::int64_t>();
+    if (intArgument > INT_MAX)
+    {
+        throw std::invalid_argument("Argument is not valid: excess max int: " +
+                                    nlohmann::to_string(argument));
+    }
+    if (intArgument < INT_MIN)
+    {
+        throw std::invalid_argument(
+            "Argument is not valid: below the min int: " +
+            nlohmann::to_string(argument));
+    }
+    return static_cast<int>(intArgument);
 }
 
-bool makeTask(int argc, char** argv, Task& task)
+void calculator::Application::makeTask(const nlohmann::json& json)
 {
-    while (true)
+
+    std::string operationArgumentStr = json.at("o").get<std::string>();
+    if (operationArgumentStr.length() != 1)
     {
-        int opt = getopt(argc, argv, "a:b:o:h");
-
-        if (opt == 'h')
-        {
-            task.showHelp = true;
-            return true;
-        }
-
-        if (opt == -1)
-        {
-            break;
-        }
-
-        if (opt == '?')
-        {
-            fprintf(stderr, "Wrong argument. Use -h for help\n");
-            return false;
-        }
-
-        if (opt == 'a')
-        {
-            if (!parseInt(optarg, task.firstNumber))
-            {
-                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
-                        optarg);
-                return false;
-            }
-            task.getFirstArgument = true;
-        }
-
-        if (opt == 'b')
-        {
-            if (!parseInt(optarg, task.secondNumber))
-            {
-                fprintf(stderr, "Invalid argument: %s. Use -h for help\n",
-                        optarg);
-                return false;
-            }
-            task.getSecondArgument = true;
-        }
-
-        if (opt == 'o')
-        {
-            if (strlen(optarg) != 1)
-            {
-                fprintf(stderr, "Invalid operation: %s. Use -h for help\n",
-                        optarg);
-                return false;
-            }
-            task.operation = *optarg;
-        }
+        throw std::invalid_argument(
+            "Unknown operation: " + operationArgumentStr + ". " +
+            "Use --help for help.");
     }
-    if (task.operation != '!')
+    task_.operation = operationArgumentStr[0];
+
+    nlohmann::json firstArgument = json.at("a");
+    task_.firstNumber = parseInt(firstArgument);
+
+    if (task_.operation != '!')
     {
-        if (!task.getFirstArgument || !task.getSecondArgument)
-        {
-            fprintf(stderr, "Missing argument. Use -h for help\n");
-            return false;
-        }
+        nlohmann::json secondArgument = json.at("b");
+        task_.secondNumber = parseInt(secondArgument);
     }
-    else
-    {
-        if (!task.getFirstArgument)
-        {
-            fprintf(stderr, "Missing argument. Use -h for help\n");
-            return false;
-        }
-    }
-    return true;
 }
 
-ar_math::Status makeCalculate(Task& task)
+void calculator::Application::makeCalculate()
 {
-    switch (task.operation)
+    switch (task_.operation)
     {
         case '+':
-            task.status = ar_math::addition(task.firstNumber, task.secondNumber,
-                                            task.result);
+            task_.status = ar_math::addition(task_.firstNumber,
+                                             task_.secondNumber, task_.result);
             break;
         case '-':
-            task.status = ar_math::subtraction(task.firstNumber,
-                                               task.secondNumber, task.result);
+            task_.status = ar_math::subtraction(
+                task_.firstNumber, task_.secondNumber, task_.result);
             break;
         case '*':
-            task.status = ar_math::multiplication(
-                task.firstNumber, task.secondNumber, task.result);
+            task_.status = ar_math::multiplication(
+                task_.firstNumber, task_.secondNumber, task_.result);
             break;
         case '/':
-            task.status = ar_math::division(task.firstNumber, task.secondNumber,
-                                            task.result);
+            task_.status = ar_math::division(task_.firstNumber,
+                                             task_.secondNumber, task_.result);
             break;
         case '^':
-            task.status = ar_math::power(task.firstNumber, task.secondNumber,
-                                         task.result);
+            task_.status = ar_math::power(task_.firstNumber, task_.secondNumber,
+                                          task_.result);
             break;
         case '!':
-            task.status = ar_math::factorial(task.firstNumber, task.result);
+            task_.status = ar_math::factorial(task_.firstNumber, task_.result);
             break;
         default:
-            task.status = ar_math::Status::UnknownOperation;
-    }
-    return task.status;
-}
-
-void printResult(Task& task)
-{
-    if (task.status == ar_math::Status::Ok)
-    {
-        printf("Result: %d\n", task.result);
+            task_.status = ar_math::Status::UnknownOperation;
     }
 
-    if (task.status == ar_math::Status::Overflow)
+    switch (task_.status)
     {
-        fprintf(stderr, "Error: result is overflow.\n");
-    }
-
-    if (task.status == ar_math::Status::DivisionByZero)
-    {
-        fprintf(stderr, "Error: Division by zero is forbidden.\n");
-    }
-
-    if (task.status == ar_math::Status::NegativeArgument)
-    {
-        fprintf(stderr, "Error: Negative argument is forbidden.\n");
-    }
-
-    if (task.status == ar_math::Status::UnknownOperation)
-    {
-        fprintf(stderr, "Error: Unknown operation. Use -h for help\n");
+        case ar_math::Status::Ok:
+            return;
+        case ar_math::Status::NegativeArgument:
+            throw std::domain_error("Negative argument is forbidden.");
+        case ar_math::Status::Overflow:
+            throw std::overflow_error("Result is overflow.");
+        case ar_math::Status::DivisionByZero:
+            throw std::domain_error("Division by zero is forbidden.");
+        case ar_math::Status::UnknownOperation:
+            throw std::logic_error("Unknown operation.");
+        case ar_math::Status::InitialStatus:
+            throw std::logic_error("Cant figure out status.");
+        default:
+            throw std::logic_error("Unknown status.");
     }
 }
 
-} // namespace
-
-int app::applicationRun(int argc, char** argv)
+void calculator::Application::printResult() const
 {
-    Task task{};
-    if (!makeTask(argc, argv, task))
+    if (task_.status == ar_math::Status::Ok)
     {
-        return EXIT_FAILURE;
+        printf("Result: %d\n", task_.result);
     }
-
-    if (task.showHelp)
-    {
-        printHelp(argv[0]);
-        return EXIT_SUCCESS;
-    }
-
-    makeCalculate(task);
-    printResult(task);
-    if (task.status == ar_math::Status::Ok)
-    {
-        return EXIT_SUCCESS;
-    }
-    return EXIT_FAILURE;
 }
