@@ -66,6 +66,10 @@ set(CALCULATOR_LOGIC
     src/log.cpp
 )
 
+set(CALCULATOR_TESTS
+    tests/app_test.cpp
+)
+
 add_library(calculator-logic ${CALCULATOR_LOGIC})    
       
 target_include_directories(calculator-logic PUBLIC src)
@@ -76,7 +80,15 @@ target_link_libraries(calculator-logic
 )
 
 add_executable(calculator-app ${CALCULATOR_SOURCES})     
-target_link_libraries(calculator-app PRIVATE calculator-logic)        
+target_link_libraries(calculator-app PRIVATE calculator-logic) 
+
+if(CALCULATOR_BUILD_TESTS)
+    add_executable(calculator-tests ${CALCULATOR_TESTS})
+    target_link_libraries(calculator-tests PRIVATE calculator-logic GTest::gtest_main)
+
+    include(GoogleTest)
+    gtest_discover_tests(calculator-tests)
+endif()
 
 if(USE_CLANG_FORMAT)
     find_program(CLANG_FORMAT_EXE NAMES clang-format-21 clang-format)
@@ -85,7 +97,7 @@ if(USE_CLANG_FORMAT)
     endif()
 
     add_custom_target(format
-        COMMAND ${CLANG_FORMAT_EXE} -i ${CALCULATOR_SOURCES} ${CALCULATOR_LOGIC}
+        COMMAND ${CLANG_FORMAT_EXE} -i ${CALCULATOR_SOURCES} ${CALCULATOR_LOGIC} ${CALCULATOR_TESTS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Formatting sources with clang-format"
         VERBATIM
